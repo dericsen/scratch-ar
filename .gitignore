@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Scratch files from ad-hoc runs. The curated artefacts in outputs/ are
+# committed on purpose so the README figures render on GitHub.
+outputs/_*.png
+outputs/frames/

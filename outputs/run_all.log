@@ -1,0 +1,132 @@
+
+--------------------------------------------------------------------
+MARKER DICTIONARY
+--------------------------------------------------------------------
+markers                      : 16
+min inter-marker distance    : 8 bits (all 4 rotations)
+min self-rotation distance   : 8 bits
+correctable bit errors       : 3 of 25
+wrote /projects/sandbox/scratch-ar/outputs/markers.png (482x538)
+
+--------------------------------------------------------------------
+PIPELINE FIGURE
+--------------------------------------------------------------------
+shape candidates 21 -> decode-rejected 18 -> accepted 3
+wrote /projects/sandbox/scratch-ar/outputs/pipeline_stages.png (1970x698)
+
+--------------------------------------------------------------------
+SINGLE FRAME vs GROUND TRUTH
+--------------------------------------------------------------------
+render 2.72s | detect 0.59s | 3/3 detectable markers found
+
+id   ok    rot deg    pos mm     pos % corner px   rmse px view deg
+0    yes     0.281      0.97     0.166     0.784     0.242     44.5
+1    yes     0.281      1.39     0.238     0.787     0.274     44.0
+2    yes     0.089      1.17     0.174     0.707     0.147     30.6
+
+wrote /projects/sandbox/scratch-ar/outputs/frame_annotated.png
+
+--------------------------------------------------------------------
+ORBIT: 30 FRAMES
+--------------------------------------------------------------------
+  frame 01/30  tracked 3/3  mean rot err 0.663 deg
+  frame 02/30  tracked 3/3  mean rot err 0.496 deg
+  frame 03/30  tracked 3/3  mean rot err 0.613 deg
+  frame 04/30  tracked 3/3  mean rot err 0.707 deg
+  frame 05/30  tracked 3/3  mean rot err 0.670 deg
+  frame 06/30  tracked 3/3  mean rot err 0.484 deg
+  frame 07/30  tracked 3/3  mean rot err 0.434 deg
+  frame 08/30  tracked 3/3  mean rot err 0.193 deg
+  frame 09/30  tracked 3/3  mean rot err 0.275 deg
+  frame 10/30  tracked 3/3  mean rot err 0.131 deg
+  frame 11/30  tracked 3/3  mean rot err 0.166 deg
+  frame 12/30  tracked 3/3  mean rot err 0.287 deg
+  frame 13/30  tracked 3/3  mean rot err 0.355 deg
+  frame 14/30  tracked 3/3  mean rot err 0.406 deg
+  frame 15/30  tracked 2/3  mean rot err 0.413 deg
+  frame 16/30  tracked 3/3  mean rot err 0.214 deg
+  frame 17/30  tracked 3/3  mean rot err 0.340 deg
+  frame 18/30  tracked 3/3  mean rot err 0.496 deg
+  frame 19/30  tracked 3/3  mean rot err 0.320 deg
+  frame 20/30  tracked 3/3  mean rot err 0.263 deg
+  frame 21/30  tracked 3/3  mean rot err 0.401 deg
+  frame 22/30  tracked 3/3  mean rot err 0.181 deg
+  frame 23/30  tracked 3/3  mean rot err 0.383 deg
+  frame 24/30  tracked 3/3  mean rot err 0.207 deg
+  frame 25/30  tracked 3/3  mean rot err 0.346 deg
+  frame 26/30  tracked 3/3  mean rot err 0.545 deg
+  frame 27/30  tracked 3/3  mean rot err 0.553 deg
+  frame 28/30  tracked 3/3  mean rot err 0.298 deg
+  frame 29/30  tracked 3/3  mean rot err 0.153 deg
+  frame 30/30  tracked 3/3  mean rot err 0.392 deg
+
+====================================================================
+ORBIT ACCURACY vs GROUND TRUTH (30 frames)
+====================================================================
+frames 30 | detectable markers 90 | detected 89 (98.9%) | missed 1
+false positives 0 | ID accuracy 100.00% (0 wrong of 89 matched)
+--------------------------------------------------------------------
+metric                      mean    median       p95       max
+rotation error (deg)      0.3791    0.3042    0.8746    1.3863
+position error (mm)       1.5402    1.3698    2.9995    4.2534
+position error (%)        0.2628    0.2285    0.5605    0.7205
+depth bias (%)           -0.0418   -0.0503    0.3019    0.6881
+corner error (px)         0.7356    0.7274    0.8548    0.9729
+reproj before LM (px)     0.9275    0.6874    2.4490    4.1255
+reproj after LM (px)      0.1527    0.1084    0.3996    0.4819
+====================================================================
+
+timing: render 80.6s | detect 17.0s | gif encode 3.3s | total 101.8s
+        per frame: render 2.69s, detect 0.57s
+wrote /projects/sandbox/scratch-ar/outputs/ar_orbit.gif (2.45 MB, 30 frames, 128 colours)
+
+--------------------------------------------------------------------
+SWEEP 1: DISTANCE (single marker, face-on-ish)
+--------------------------------------------------------------------
+  distance (m)       0.22         det 1/1  rot   0.174 deg  pos     0.42 mm  corner  0.810 px
+  distance (m)       0.3          det 1/1  rot   0.395 deg  pos     0.48 mm  corner  0.730 px
+  distance (m)       0.4          det 1/1  rot   0.319 deg  pos     0.61 mm  corner  0.705 px
+  distance (m)       0.55         det 1/1  rot   0.678 deg  pos     1.63 mm  corner  0.687 px
+  distance (m)       0.75         det 1/1  rot   0.857 deg  pos     2.43 mm  corner  0.844 px
+  distance (m)       1            det 1/1  rot   0.519 deg  pos     3.83 mm  corner  0.775 px
+  distance (m)       1.35         det 1/1  rot   1.157 deg  pos     3.23 mm  corner  0.623 px
+  distance (m)       1.8          det 1/1  rot   0.697 deg  pos    23.44 mm  corner  0.721 px
+  distance (m)       2.3          det 0/0  rot       - deg  pos        - mm  corner      - px
+  distance (m)       2.8          det 0/0  rot       - deg  pos        - mm  corner      - px
+
+--------------------------------------------------------------------
+SWEEP 2: VIEWING OBLIQUITY (camera elevation above a flat marker)
+--------------------------------------------------------------------
+  view angle (deg)   5            det 1/1  rot   0.585 deg  pos     1.13 mm  corner  0.779 px
+  view angle (deg)   20           det 1/1  rot   1.369 deg  pos     1.20 mm  corner  0.657 px
+  view angle (deg)   35           det 1/1  rot   0.412 deg  pos     1.37 mm  corner  0.863 px
+  view angle (deg)   50           det 1/1  rot   0.150 deg  pos     0.75 mm  corner  0.748 px
+  view angle (deg)   62           det 1/1  rot   0.255 deg  pos     0.79 mm  corner  0.754 px
+  view angle (deg)   72           det 1/0  rot   0.580 deg  pos     3.39 mm  corner  0.899 px
+  view angle (deg)   80           det 0/0  rot       - deg  pos        - mm  corner      - px
+
+--------------------------------------------------------------------
+SWEEP 3: SENSOR NOISE
+--------------------------------------------------------------------
+  noise sigma        0            det 1/1  rot   0.296 deg  pos     0.98 mm  corner  0.727 px
+  noise sigma        2            det 1/1  rot   0.174 deg  pos     0.74 mm  corner  0.726 px
+  noise sigma        5            det 1/1  rot   0.061 deg  pos     0.72 mm  corner  0.672 px
+  noise sigma        10           det 1/1  rot   0.798 deg  pos     1.77 mm  corner  0.820 px
+  noise sigma        16           det 1/1  rot   0.350 deg  pos     0.82 mm  corner  0.672 px
+  noise sigma        24           det 1/1  rot   0.197 deg  pos     1.46 mm  corner  0.601 px
+  noise sigma        34           det 1/1  rot   0.780 deg  pos     2.11 mm  corner  1.005 px
+
+wrote /projects/sandbox/scratch-ar/outputs/robustness.png
+
+wrote /projects/sandbox/scratch-ar/outputs/metrics.json
+
+--------------------------------------------------------------------
+ARTEFACTS IN outputs/
+--------------------------------------------------------------------
+  ar_orbit.gif                 2395.4 KB
+  frame_annotated.png           339.9 KB
+  markers.png                     9.5 KB
+  metrics.json                   41.4 KB
+  pipeline_stages.png          1184.2 KB
+  robustness.png                  9.5 KB
+  run_all.log                     7.2 KB
