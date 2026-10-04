@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Computer Vision Floor — interactive AR floor game</title>
+<meta name="description" content="Real-time computer vision floor game: pose estimation finds players' feet, a homography maps them onto a virtual tile grid, and the game is played by walking.">
+<style>
+  :root {
+    --bg: #07080d;
+    --panel: #10121b;
+    --line: rgba(0, 229, 255, 0.26);
+    --cyan: #00e5ff;
+    --amber: #ffc428;
+    --lime: #a8ff46;
+    --red: #ff4842;
+    --text: #f5f8ff;
+    --dim: rgba(245, 248, 255, 0.6);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  body { display: flex; flex-direction: column; align-items: center; padding: 14px 12px 40px; }
+  .wrap { width: 100%; max-width: 1180px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; margin-bottom: 10px; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: 2px; color: var(--cyan); }
+  #hud-level { font-size: 15px; font-weight: bold; color: var(--amber); }
+  #hud-phase { font-size: 11.5px; color: var(--dim); margin-left: auto; }
+
+  #question-bar { border: 1px solid var(--line); background: var(--panel);
+    padding: 11px 14px; margin-bottom: 10px; }
+  #question-text { font-size: 17px; font-weight: bold; color: var(--text); }
+  #question-sub { font-size: 12px; color: var(--dim); margin-top: 4px; }
+
+  .main { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  #stage-wrap { flex: 1 1 680px; min-width: 320px; border: 1px solid var(--line);
+    background: #000; line-height: 0; position: relative; }
+  canvas#stage { width: 100%; height: auto; display: block; cursor: crosshair; }
+  video#cam { display: none; }
+
+  aside { flex: 0 0 240px; min-width: 220px; }
+  aside h2 { font-size: 11px; letter-spacing: 1.4px; color: var(--cyan);
+    margin: 0 0 7px; font-weight: normal; }
+  #hud-players { display: flex; flex-direction: column; gap: 5px; }
+  .pl { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px;
+    background: var(--panel); border: 1px solid rgba(255,255,255,0.07);
+    border-left: 3px solid var(--cyan); padding: 7px 9px; font-size: 12px; }
+  .pl.empty { color: var(--dim); border-left-color: rgba(255,255,255,0.15);
+    display: block; text-align: center; }
+  .pn { font-weight: bold; }
+  .pt { color: var(--amber); font-weight: bold; text-align: right; }
+  .ps { color: var(--lime); }
+  .ph { color: var(--red); text-align: right; }
+  .pst { font-size: 10px; color: var(--dim); }
+  .pst.out { color: var(--red); }
+
+  #controls { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-top: 10px; }
+  button, select { font-family: inherit; font-size: 12px; padding: 8px 13px;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line);
+    cursor: pointer; letter-spacing: 0.6px; }
+  button:hover { border-color: var(--cyan); color: var(--cyan); }
+  #btn-start { border-color: var(--amber); color: var(--amber); font-weight: bold; }
+  label.sel { font-size: 11.5px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  #status { margin-top: 9px; font-size: 11.5px; color: var(--dim); min-height: 15px; }
+  #calib-hint { font-size: 11.5px; color: var(--amber); min-height: 15px; }
+
+  .notes { margin-top: 24px; font-size: 13px; line-height: 1.65; color: var(--dim); }
+  .notes h2 { font-size: 13px; color: var(--cyan); letter-spacing: 1px; margin: 20px 0 7px; }
+  .notes b { color: var(--text); }
+  .notes ol, .notes ul { padding-left: 20px; }
+  .notes li { margin-bottom: 4px; }
+  .notes code { background: var(--panel); padding: 1px 5px;
+    border: 1px solid rgba(255,255,255,0.08); }
+  .pipeline { background: var(--panel); border: 1px solid rgba(255,255,255,0.08);
+    padding: 12px 14px; white-space: pre; overflow-x: auto; font-size: 12px;
+    color: var(--text); line-height: 1.5; }
+  a { color: var(--cyan); }
+  .warn { margin-top: 16px; padding: 10px 13px; border-left: 2px solid var(--amber);
+    background: rgba(255,196,40,0.06); color: var(--text); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>COMPUTER&nbsp;VISION&nbsp;FLOOR</h1>
+  <div id="hud-level">LEVEL - / -</div>
+  <div id="hud-phase"></div>
+</header>
+
+<div id="question-bar" style="display:none">
+  <div id="question-text"></div>
+  <div id="question-sub"></div>
+</div>
+
+<div class="main">
+  <div id="stage-wrap">
+    <canvas id="stage"></canvas>
+  </div>
+  <aside>
+    <h2>PLAYERS</h2>
+    <div id="hud-players"><div class="pl empty">no players detected</div></div>
+  </aside>
+</div>
+
+<div id="controls">
+  <button id="btn-start">START CAMERA</button>
+  <button id="btn-restart">Restart game</button>
+  <button id="btn-recal" title="R">Recalibrate</button>
+  <button id="btn-default">Use default floor</button>
+  <button id="btn-mock" title="M">Mock players: OFF</button>
+  <button id="btn-skeleton" title="S">Skeleton: ON</button>
+  <button id="btn-labels" title="L">Tile labels: ON</button>
+  <label class="sel">Grid
+    <select id="grid-size">
+      <option value="6">6 x 6</option>
+      <option value="8" selected>8 x 8</option>
+      <option value="10">10 x 10</option>
+    </select>
+  </label>
+</div>
+
+<div id="calib-hint"></div>
+<div id="status"></div>
+
+<video id="cam" playsinline muted></video>
+
+<div class="notes">
+  <div class="warn">
+    <b>Camera stays on your machine.</b> Pose estimation runs in this page via
+    WebAssembly; no video is uploaded anywhere. The page is static. The pose
+    model itself is fetched once from Google's CDN.
+    <br><br>
+    <b>Must be served over <code>https://</code> or <code>localhost</code></b> —
+    browsers block camera access on <code>file://</code>.
+  </div>
+
+  <h2>Setup</h2>
+  <ol>
+    <li>Point the camera at a floor area, ideally from a height and at an angle, so you can
+      see the whole play space and people's feet.</li>
+    <li>Press <b>START CAMERA</b> and allow access.</li>
+    <li>Click the <b>four corners of the play area</b> in this order:
+      top-left, top-right, bottom-right, bottom-left. Drag any corner to fine-tune.
+      (Or press <b>Use default floor</b> and drag the four dots into place.)</li>
+    <li>Check that the grid looks glued to the real floor, then press <b>START GAME</b>.</li>
+    <li>Walk onto tiles. Your feet are the controller — no clicking.</li>
+  </ol>
+  <p>
+    Calibration is saved in your browser, so you only do it once per camera position.
+    No camera? Press <b>Mock players</b> to watch synthetic walkers drive the same pipeline.
+  </p>
+
+  <h2>The pipeline</h2>
+  <div class="pipeline">camera frame
+  |
+  v
+pose estimation            MediaPipe PoseLandmarker, numPoses = 4
+  |
+  v
+foot landmarks             heel + foot-index per foot, ankle as fallback
+  |
+  v
+homography                 4 clicked corners -> unit square
+  |
+  v
+floor coordinates          x,y in [0,1]
+  |
+  v
+grid cell                  row A..H, column 1..8  ->  "C4"
+  |
+  v
+player tracking            stable IDs, One Euro filter, tile hysteresis
+  |
+  v
+game logic                 safe / dangerous tiles, CS questions, scoring
+  |
+  v
+AR overlay                 tiles + markers drawn back through the homography</div>
+
+  <h2>Why each step is there</h2>
+  <ul>
+    <li><b>Feet, not bounding boxes.</b> A bounding-box centre sits near the chest and
+      swings when someone leans or raises an arm. The contact point with the floor is the
+      feet, so the stance point is the midpoint of the heel and toe landmarks, with the
+      ankle as a fallback and the hips as a last resort.</li>
+    <li><b>Homography, not a linear grid.</b> Seen at an angle, a square tile is a
+      trapezoid and far tiles are smaller. A projective transform from your four clicked
+      corners is what keeps the virtual grid attached to the real floor — and it is why
+      the circular markers squash correctly as players walk away from the camera.</li>
+    <li><b>Jitter control.</b> Landmarks wobble a few pixels per frame even when you stand
+      still. Raw, that makes the detected tile flicker between neighbours — scoring and
+      killing you at random. Two defences: a One Euro filter (heavy smoothing when still,
+      light when moving, so it never feels laggy) and hysteresis on the tile decision, which
+      only commits to a new tile once you are clearly inside it or have stayed a few frames.</li>
+    <li><b>Identity.</b> Pose models return a list of people per frame with no IDs, and the
+      order can change. IDs come from matching detections to existing tracks by floor
+      distance — globally, not greedily — with a timeout so someone briefly occluded keeps
+      their score.</li>
+    <li><b>Timed resolution.</b> Rounds are judged when the timer expires, not on contact,
+      so crossing a dangerous tile on your way to a safe one does not punish you.</li>
+  </ul>
+
+  <h2>Code and tests</h2>
+  <p>
+    <a href="https://github.com/dericsen/scratch-ar">github.com/dericsen/scratch-ar</a>.
+    The pipeline's logic lives in <code>docs/floor/core/</code> — geometry, tracking,
+    game — with no dependency on cameras or canvases, which is what makes it testable:
+    <code>node tests/floor_test.js</code> runs 42 tests driving the whole chain with
+    synthetic pose landmarks at known floor positions, including two players scored
+    independently on their own tiles.
+  </p>
+  <p>
+    MediaPipe is isolated in <code>docs/floor/pose.js</code> behind a two-function
+    interface, with a mock implementation of the same interface for testing and demoing.
+  </p>
+</div>
+
+</div>
+
+<script src="core/geometry.js"></script>
+<script src="core/tracking.js"></script>
+<script src="core/questions.js"></script>
+<script src="core/game.js"></script>
+<script src="render.js"></script>
+<script src="pose.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>

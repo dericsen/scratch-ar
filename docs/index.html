@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HOLO LAVA — the floor is lava, pakai badanmu</title>
+<meta name="description" content="Game webcam: lantainya lava, lompat ke kotak aman. Computer vision dari nol, tanpa library.">
+<style>
+  :root {
+    --bg: #07080d;
+    --panel: #10121b;
+    --line: rgba(0, 229, 255, 0.28);
+    --cyan: #00e5ff;
+    --amber: #ffc428;
+    --text: #f5f8ff;
+    --dim: rgba(245, 248, 255, 0.62);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 18px 14px 40px;
+  }
+  header { text-align: center; margin-bottom: 14px; }
+  h1 {
+    font-size: 21px;
+    margin: 0 0 6px;
+    letter-spacing: 2px;
+    color: var(--cyan);
+  }
+  .tag { font-size: 13px; color: var(--dim); line-height: 1.5; }
+  #stage-wrap {
+    width: 100%;
+    max-width: 960px;
+    border: 1px solid var(--line);
+    background: #000;
+    line-height: 0;
+  }
+  canvas#stage { width: 100%; height: auto; display: block; }
+  video#cam { display: none; }
+  #controls {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+  }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 9px 15px;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  button:hover { border-color: var(--cyan); color: var(--cyan); }
+  button#btn-start { border-color: var(--amber); color: var(--amber); font-weight: bold; }
+  .sens {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--dim);
+    margin-left: auto;
+  }
+  input[type=range] { width: 130px; accent-color: #00e5ff; }
+  #status {
+    width: 100%;
+    max-width: 960px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--dim);
+    min-height: 16px;
+  }
+  .notes {
+    width: 100%;
+    max-width: 960px;
+    margin-top: 26px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--dim);
+  }
+  .notes h2 {
+    font-size: 14px;
+    color: var(--cyan);
+    letter-spacing: 1px;
+    margin: 22px 0 8px;
+  }
+  .notes b { color: var(--text); }
+  .notes ol, .notes ul { padding-left: 20px; margin: 8px 0; }
+  .notes li { margin-bottom: 5px; }
+  .notes code {
+    background: var(--panel);
+    padding: 1px 5px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  a { color: var(--cyan); }
+  .privacy {
+    margin-top: 18px;
+    padding: 11px 14px;
+    border-left: 2px solid var(--amber);
+    background: rgba(255, 196, 40, 0.06);
+    color: var(--text);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>HOLO&nbsp;LAVA</h1>
+  <div class="tag">
+    Lantainya lava. Geser badanmu ke kotak <b>AMAN</b>, dan <b>lompat</b> waktu gelombang datang.<br>
+    Computer vision ditulis dari nol — tanpa OpenCV, tanpa TensorFlow, tanpa library apa pun.<br>
+    <br>
+    Cari yang lebih canggih? <a href="floor/"><b>CV FLOOR</b></a> — lantai AR dengan
+    pose estimation, grid 8×8, multi-pemain, dan soal computer science.
+  </div>
+</header>
+
+<div id="stage-wrap">
+  <canvas id="stage"></canvas>
+</div>
+
+<div id="controls">
+  <button id="btn-start">MULAI</button>
+  <button id="btn-recal" title="Tombol R">Kalibrasi Ulang</button>
+  <button id="btn-debug" title="Tombol D">Debug: OFF</button>
+  <button id="btn-mute" title="Tombol M">Suara: ON</button>
+  <label class="sens">
+    Sensitivitas
+    <input id="sens" type="range" min="0.4" max="2.5" step="0.05" value="1">
+  </label>
+</div>
+
+<div id="status"></div>
+
+<video id="cam" playsinline muted></video>
+
+<div class="notes">
+  <div class="privacy">
+    <b>Soal privasi:</b> gambar kameramu tidak pernah dikirim ke mana pun. Semua pemrosesan
+    terjadi di dalam browser ini, dan tidak ada server yang menerima video. Halaman ini
+    hanya file statis.
+  </div>
+
+  <h2>Cara main</h2>
+  <ol>
+    <li>Tekan <b>MULAI</b> dan izinkan akses kamera.</li>
+    <li><b>Keluar dulu dari frame</b> selama hitungan 3. Program menghafal ruangan kosongmu.</li>
+    <li>Masuk kembali ke frame. Permainan mulai otomatis.</li>
+    <li>Satu kotak bertanda <b>AMAN</b>, sisanya lava. Geser badanmu ke kotak aman sebelum waktunya habis.</li>
+    <li>Kalau muncul <b>GELOMBANG LAVA</b>, semua kotak berbahaya — satu-satunya jalan adalah <b>melompat</b>.</li>
+    <li>Lompat tepat saat mendarat di kotak aman = bonus <b>PERFECT HOP</b>.</li>
+  </ol>
+  <p>
+    Berdiri sekitar <b>2 meter</b> dari kamera supaya badanmu punya ruang bergerak kiri-kanan.
+    Kalau siluetmu terlihat kacau, tekan <b>Kalibrasi Ulang</b> (atau <code>R</code>) sambil
+    keluar dari frame.
+  </p>
+
+  <h2>Cara kerjanya</h2>
+  <p>
+    Game ini tidak memakai model AI terlatih. Intinya satu ide sederhana yang disebut
+    <b>background subtraction</b>:
+  </p>
+  <ul>
+    <li>Saat kalibrasi, program merekam rata-rata tampilan <b>ruangan kosong</b>.</li>
+    <li>Setiap frame berikutnya, tiap piksel ditanya: <i>"kamu masih mirip ruangan, atau ada yang menutupimu?"</i></li>
+    <li>Kumpulan piksel yang tertutup itulah <b>siluet badanmu</b> — yang kamu lihat sebagai cahaya biru.</li>
+  </ul>
+  <p>
+    Kenapa bukan sekadar membandingkan frame sekarang dengan frame sebelumnya (cara yang
+    lebih mudah)? Karena cara itu cuma bisa melihat <b>gerakan</b> — begitu kamu berdiri diam,
+    kamu menghilang. Di game ini badan yang diam tetap harus terlihat, supaya program tahu
+    kakimu sedang menginjak lava atau tidak.
+  </p>
+  <p>Dari siluet itu diturunkan dua sinyal:</p>
+  <ul>
+    <li><b>Kamu di kotak mana</b> — jumlah piksel badan dihitung per kolom layar; kolom dengan
+      massa terbanyak adalah kotakmu.</li>
+    <li><b>Kamu melompat atau tidak</b> — program belajar dulu posisi tubuhmu saat <i>berdiri
+      santai</i>, lalu menyebut "lompat" kalau titik tengah badanmu naik cukup jauh di atas
+      posisi santai itu. Karena diukur relatif terhadap dirimu sendiri, ini tetap bekerja
+      baik kamu tinggi, pendek, dekat, maupun jauh dari kamera.</li>
+  </ul>
+  <p>
+    Tiga masalah dunia nyata yang ditangani khusus: <b>noise kamera</b> (ambang batas diukur
+    dari noise kameramu sendiri saat kalibrasi, bukan angka tetap), <b>bayangan</b> (bayangan
+    hanya meredupkan latar secara proporsional, jadi bisa dibedakan dari benda nyata —
+    tanpa ini, bayanganmu yang jatuh ke lava akan membunuhmu), dan <b>perubahan cahaya</b>
+    (kalau hampir seluruh frame berubah, game berhenti dan minta kalibrasi ulang alih-alih
+    menghukummu).
+  </p>
+  <p>
+    Tekan <b>Debug</b> (atau <code>D</code>) untuk melihat yang dilihat program: kotak-kotak
+    merah adalah grid tempat badanmu terdeteksi, plus angka ambang batas dan status lompat.
+  </p>
+
+  <h2>Kode</h2>
+  <p>
+    <a href="https://github.com/dericsen/scratch-ar">github.com/dericsen/scratch-ar</a> —
+    <code>docs/vision.js</code> berisi seluruh computer vision-nya (~400 baris),
+    <code>docs/game.js</code> logika game-nya. Diuji lewat
+    <code>tests/vision_test.js</code> dengan frame sintetis di Node, karena sandbox
+    pengembangnya tidak punya webcam.
+  </p>
+  <p>
+    Repo yang sama juga berisi <b>HOLO</b>, engine augmented reality pure-Python: deteksi
+    penanda fiducial dan estimasi pose kamera 6-DoF, lengkap dengan codec PNG dan GIF
+    buatan sendiri.
+  </p>
+</div>
+
+<script src="vision.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
