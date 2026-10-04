@@ -1,12 +1,88 @@
-# HOLO — an augmented reality engine written from scratch
+# Computer vision from scratch — no libraries, two projects
+
+**Zero dependencies in both.** No OpenCV, no NumPy, no Pillow, no TensorFlow,
+no game engine. Every pixel is touched by code written here.
+
+| | |
+|---|---|
+| **[HOLO LAVA](#holo-lava--play-the-floor-is-lava-with-your-body)** | A webcam game. The floor is lava — step onto the safe tile, jump over the waves. Runs entirely in your browser; your camera feed never leaves the page. |
+| **[HOLO](#holo--an-augmented-reality-engine)** | An augmented reality engine in pure Python. Fiducial marker detection → 6-DoF camera pose → 3D objects anchored to the marker, plus the PNG and GIF codecs used to write the results. |
+
+---
+
+# HOLO LAVA — play "the floor is lava" with your body
+
+**▶ [Play it here](https://dericsen.github.io/scratch-ar/)** (needs a webcam;
+works on desktop Chrome, Edge, Firefox and Safari)
+
+The bottom of the screen is a row of tiles. Each round one tile is safe and the
+rest turn to lava, so you physically step left or right to stand on the safe
+one. Sometimes a wave sweeps every tile at once and the only escape is to jump.
+
+## Why background subtraction, not frame differencing
+
+Frame differencing — compare this frame to the previous one — is the easy way to
+find a person in a webcam feed, and it is the wrong tool here: the instant the
+player stands still they vanish. "The floor is lava" has to know where the body
+*is*, not where it last moved.
+
+So the detector memorises the empty room during a short calibration, then asks
+every pixel each frame: *do you still look like the room, or is something
+covering you?* A motionless player stays visible indefinitely.
+
+From that silhouette come the only two signals the game plays on:
+
+- **which tile you are on** — body mass summed per column of the screen;
+- **whether you jumped** — the body centroid rising above its *own* learned
+  resting height, so it works whether you are tall, short, near or far.
+
+## Three real-world problems it handles explicitly
+
+| problem | what goes wrong without it | the fix |
+|---|---|---|
+| **Sensor noise** | A fixed threshold is blind in a dim room and hallucinating in a bright one | The threshold is measured from your camera's own noise during calibration: `mean + 6·stddev` of its frame-to-frame variation |
+| **Shadows** | Your shadow becomes part of your body, falls in the lava, and kills you | A shadow dims the background roughly *proportionally*; pixels that are merely scaled-down copies of the background are classified as shadow, while genuinely dark clothing is kept |
+| **Lighting changes** | Someone hits a light switch and the whole frame reads as "body" | Coverage above 82% is reported as a stale background: the game pauses and asks for recalibration instead of punishing the player |
+
+## Tested without a browser
+
+There is no webcam — and no browser — in the sandbox this was built in, so the
+vision core is driven by synthetic frames in Node: a textured "room" plus
+rectangles standing in for a body, a shadow and a dark object.
+
+```bash
+node tests/vision_test.js   # 20 tests: silhouette, shadows, lanes, jumps
+node tests/game_test.js     # 11 tests: the game loop, via a stubbed DOM
+```
+
+The tests that matter most are the ones asserting the failure modes above:
+
+- a motionless body stays detected across 40 frames (the whole reason for
+  background subtraction);
+- camera noise alone lights up less than 2% of the mask;
+- a 75%-brightness shadow is rejected while a dark object at the same position
+  is kept;
+- walking sideways never registers as a jump, and a jump fires exactly once;
+- the same relative rise triggers a jump for a small distant body and a large
+  near one.
+
+`tests/game_test.js` stubs the DOM and canvas and injects frames where the game
+reads its camera, then checks the actual rules: standing on the safe tile
+scores, standing in lava costs exactly one heart, a jump survives the wave, and
+three mistakes end the game.
+
+What these tests **cannot** prove is that it feels good with a real camera, real
+lighting and a real person — that part needs you.
+
+---
+
+# HOLO — an augmented reality engine
 
 Marker detection → 6-DoF camera pose → 3D objects anchored to the marker, plus
 the PNG and animated-GIF codecs used to write the results.
 
-**Zero dependencies.** No OpenCV, no NumPy, no Pillow. The only imports in the
-whole project are `math`, `zlib`, `struct`, `random`, `os`, `sys`, `json`,
-`time`, `argparse` and `subprocess` — all Python standard library. Every pixel
-is touched by Python code written here.
+Pure Python. The only imports are `math`, `zlib`, `struct`, `random`, `os`,
+`sys`, `json`, `time`, `argparse` and `subprocess` — all standard library.
 
 ![AR overlay](outputs/frame_annotated.png)
 
@@ -156,7 +232,7 @@ These are real, and measured rather than hidden:
 
 ## Running it
 
-Needs only CPython ≥ 3.9.
+Needs only CPython ≥ 3.9 (verified on 3.9, 3.13 and 3.14).
 
 ```bash
 python3 run.py selftest   # 50 tests, no pytest needed
@@ -205,3 +281,16 @@ Artefacts land in `outputs/`:
 
 The bitmap font in `image.py` is hand-drawn glyph by glyph, because there was no
 font library to load either.
+
+### The browser game
+
+| file | lines | contents |
+|---|---|---|
+| `docs/vision.js` | ~430 | background subtraction, shadow rejection, noise calibration, lane occupancy, jump detection |
+| `docs/game.js` | ~660 | round logic, scoring, canvas rendering, WebAudio beeps |
+| `docs/index.html` | ~230 | page shell, controls, and a plain-language explanation of the vision |
+| `tests/vision_test.js` | ~330 | 20 tests on synthetic frames |
+| `tests/game_test.js` | ~290 | 11 game-loop tests through a stubbed DOM |
+
+No build step and no module loader: `vision.js` attaches to a global, so the
+same file runs from `https://`, from `file://`, and inside Node for the tests.
